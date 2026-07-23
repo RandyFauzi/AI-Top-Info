@@ -28,13 +28,10 @@ def search_tavily(query: str) -> str:
     """Helper to query Tavily Search API with fallback."""
     api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
-        print(f"[Tavily Mock] Searching for: '{query}'")
-        query_lower = query.lower()
-        if "dataset" in query_lower or "video" in query_lower:
-            return "Opportunity Alert: TechCorp AI looking to license video dataset catalogs containing traffic security cams. Budget: $20k. Direct URL: https://linkedin.com/jobs/view/techcorp-datasets"
-        if "vision" in query_lower or "drone" in query_lower:
-            return "Hiring Post: AeroDrones Inc seeking a Senior CV Engineer to build real-time spatial navigation models. Direct URL: https://linkedin.com/posts/aerodrones-hiring-cv"
-        return "Opportunity: AI startup searching for text-based NLP annotators. Direct URL: https://linkedin.com/jobs/view/nlp-annotators"
+        raise HTTPException(
+            status_code=400,
+            detail="TAVILY_API_KEY is missing. Real-time web search requires an active search key."
+        )
 
     try:
         response = requests.post(
@@ -54,84 +51,21 @@ def search_tavily(query: str) -> str:
             snippets = [r.get("content", "") for r in results.get("results", [])]
             return "\n\n".join(snippets[:3])
     except Exception as e:
-        print(f"[Tavily Error] Search failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Tavily search connection failed: {str(e)}"
+        )
         
-    return f"Search error fallback for {query}."
-
-def run_local_fallback(content: str) -> dict:
-    """Fallback parser if Gemini API is unavailable or fails."""
-    content_lower = content.lower()
-    
-    if "sora" in content_lower or "physicworld" in content_lower:
-        return {
-            "is_relevant_opportunity": True,
-            "title": "Sourcing Video Datasets for Physical Simulation AI",
-            "summary": "PhysicWorld AI is seeking to license massive high-frame-rate interior video datasets of office spaces and public lobbies to refine their physical world synthesis model.",
-            "source_platform": "Discord",
-            "source_url": "https://discord.com/channels/123456789/announcements/987654",
-            "contacts": {
-                "email": "datasets@physicworld.ai",
-                "phone_wa": None
-            }
-        }
-    
-    if "drone" in content_lower or "visiondrive" in content_lower:
-        return {
-            "is_relevant_opportunity": True,
-            "title": "Computer Vision Engineer - Drones Navigation",
-            "summary": "VisionDrive is hiring a CV Engineer to compile and build adverse-weather and multi-angle drone navigation video datasets.",
-            "source_platform": "LinkedIn",
-            "source_url": "https://linkedin.com/posts/visiondrive-drones-hiring",
-            "contacts": {
-                "email": "hiring@visiondrive.ai",
-                "phone_wa": "14155550177"
-            }
-        }
-
-    if "veedio" in content_lower or "avatar" in content_lower:
-        return {
-            "is_relevant_opportunity": True,
-            "title": "Urgent License: AI Avatar Video Datasets",
-            "summary": "Veedio AI is looking to license video files and video captioning datasets of talking heads for generative AI avatar training.",
-            "source_platform": "Web",
-            "source_url": "https://veedio.ai/careers/dataset-licensing",
-            "contacts": {
-                "email": "growth@veedio.ai",
-                "phone_wa": "12135550199"
-            }
-        }
-
-    # NLP/LLM text models - not related to video datasets
-    if "lexiwriter" in content_lower or "llama" in content_lower:
-        return {
-            "is_relevant_opportunity": False,
-            "title": "NLP Writer Opportunity",
-            "summary": "Looking for NLP text writers. Completely text-based LLM.",
-            "source_platform": "LinkedIn",
-            "source_url": "https://linkedin.com/posts/lexiwriter-copywriters",
-            "contacts": {
-                "email": "support@lexiwriter.com",
-                "phone_wa": None
-            }
-        }
-
-    return {
-        "is_relevant_opportunity": True,
-        "title": "Dataset Procurement - Video Content",
-        "summary": "Company needs video assets for model fine-tuning.",
-        "source_platform": "Web",
-        "source_url": "https://techcrunch.example.com/ai-opportunity",
-        "contacts": {
-            "email": "contact@example.com",
-            "phone_wa": None
-        }
-    }
+    raise HTTPException(status_code=500, detail="Search failed with unknown response.")
 
 @app.post("/analyze-opportunity", response_model=OpportunityResponse)
 async def analyze_opportunity(request: OpportunityRequest):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key or not api_key.startswith("AIzaSy"):
-        return run_local_fallback(request.raw_content)
+        raise HTTPException(
+            status_code=400,
+            detail="Missing or mock GEMINI_API_KEY. Configured API key must be a valid Google AI Studio key starting with 'AIzaSy'."
+        )
         
     try:
         # Initialize Gemini via LangChain
@@ -172,7 +106,10 @@ contacts (object with keys: email, phone_wa)."""),
             "contacts": result.get("contacts", {"email": None, "phone_wa": None})
         }
     except Exception as e:
-        return run_local_fallback(request.raw_content)
+        raise HTTPException(
+            status_code=500,
+            detail=f"LangChain Gemini Agent analysis failed: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
