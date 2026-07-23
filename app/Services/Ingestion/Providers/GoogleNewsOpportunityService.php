@@ -13,11 +13,17 @@ class GoogleNewsOpportunityService implements IngestionInterface
     public function fetchOpportunities(): array
     {
         $posts = [];
-        // when:2m limits results to the last 2 months
         $url = 'https://news.google.com/rss/search?q=AI+video+dataset+startup+hiring+when:2m&hl=en-US&gl=US&ceid=US:en';
 
+        Log::info("GoogleNewsOpportunityService: Fetching target URL: {$url}");
+
         try {
-            $response = Http::timeout(10)->get($url);
+            $response = Http::timeout(10)
+                ->withoutVerifying()
+                ->get($url);
+
+            Log::info("GoogleNewsOpportunityService: Received HTTP status: " . $response->status());
+            Log::info("GoogleNewsOpportunityService: Raw response body snippet: " . substr($response->body(), 0, 500));
 
             if ($response->successful()) {
                 $xml = simplexml_load_string($response->body());
@@ -36,9 +42,11 @@ class GoogleNewsOpportunityService implements IngestionInterface
                         ];
                     }
                 }
+            } else {
+                Log::error("GoogleNewsOpportunityService: Failed HTTP Request. Status: " . $response->status());
             }
         } catch (\Exception $e) {
-            Log::error("GoogleNewsOpportunityService: RSS fetch failed: " . $e->getMessage());
+            Log::error("GoogleNewsOpportunityService: RSS fetch failed. Error: " . $e->getMessage());
         }
 
         return $posts;

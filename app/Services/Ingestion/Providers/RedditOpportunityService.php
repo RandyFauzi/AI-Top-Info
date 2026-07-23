@@ -22,18 +22,25 @@ class RedditOpportunityService implements IngestionInterface
         $cutoffDate = now()->subDays(60)->timestamp;
 
         foreach ($keywords as $keyword) {
+            $targetUrl = 'https://www.reddit.com/search.json';
+            Log::info("RedditOpportunityService: Fetching target URL: {$targetUrl} with query keyword '{$keyword}'");
+
             try {
-                // Hit Reddit open json search
+                // Hit Reddit open json search (disabling SSL verification for Laragon/curl compatibility)
                 $response = Http::timeout(10)
+                    ->withoutVerifying()
                     ->withHeaders([
                         'User-Agent' => 'AITopInfoAgent/1.0.0 (by /u/randyfauzi)'
                     ])
-                    ->get('https://www.reddit.com/search.json', [
+                    ->get($targetUrl, [
                         'q' => $keyword,
                         'sort' => 'new',
                         't' => 'month',
                         'limit' => 10
                     ]);
+
+                Log::info("RedditOpportunityService: Received HTTP status: " . $response->status());
+                Log::info("RedditOpportunityService: Raw response body snippet: " . substr($response->body(), 0, 500));
 
                 if ($response->successful()) {
                     $children = $response->json()['data']['children'] ?? [];
@@ -58,11 +65,13 @@ class RedditOpportunityService implements IngestionInterface
                             ];
                         }
                     }
+                } else {
+                    Log::error("RedditOpportunityService: Failed HTTP Request. Body: " . $response->body());
                 }
                 // Rate limit padding
                 usleep(500000);
             } catch (\Exception $e) {
-                Log::error("RedditOpportunityService: Search failed for keyword '{$keyword}': " . $e->getMessage());
+                Log::error("RedditOpportunityService: cURL / Connection failed for keyword '{$keyword}'. Error: " . $e->getMessage());
             }
         }
 

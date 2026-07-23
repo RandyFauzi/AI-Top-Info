@@ -68,14 +68,14 @@ class AggregatorManager
      */
     private function validateUrl(string $url): bool
     {
-        // Skip validation for mock discord urls or local testing links to keep it compatible
         if (str_contains($url, 'discord.com/channels') || str_contains($url, 'example.com')) {
             return true;
         }
 
         try {
-            // Send a quick HEAD request
+            // Send a quick HEAD request without verifying SSL certificates
             $response = Http::timeout(3)
+                ->withoutVerifying()
                 ->withHeaders(['User-Agent' => 'AITopInfoAgent/1.0.0'])
                 ->head($url);
 
@@ -86,6 +86,7 @@ class AggregatorManager
             // Fallback to GET request if HEAD is rejected/unsupported
             try {
                 $response = Http::timeout(3)
+                    ->withoutVerifying()
                     ->withHeaders(['User-Agent' => 'AITopInfoAgent/1.0.0'])
                     ->get($url);
                 return $response->status() >= 200 && $response->status() < 400;
