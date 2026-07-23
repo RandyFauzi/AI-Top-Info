@@ -148,15 +148,15 @@
                         <h3 class="text-3xl font-extrabold text-white mt-1 font-display">{{ $totalCount }}</h3>
                     </div>
                     <div class="bg-gradient-to-br from-blue-900/10 to-slate-950 p-5 rounded-2xl border border-blue-500/10 shadow-md">
-                        <span class="text-xs font-semibold tracking-wider text-blue-400 uppercase">Tech & Development</span>
+                        <span class="text-xs font-semibold tracking-wider text-blue-400 uppercase">Egocentric Video Datasets</span>
                         <h3 class="text-3xl font-extrabold text-blue-400 mt-1 font-display">{{ $techCount }}</h3>
                     </div>
                     <div class="bg-gradient-to-br from-indigo-900/10 to-slate-950 p-5 rounded-2xl border border-indigo-500/10 shadow-md">
-                        <span class="text-xs font-semibold tracking-wider text-indigo-400 uppercase">Corporate Finance & Tax</span>
+                        <span class="text-xs font-semibold tracking-wider text-indigo-400 uppercase">Physical AI & Robotics</span>
                         <h3 class="text-3xl font-extrabold text-indigo-400 mt-1 font-display">{{ $financeCount }}</h3>
                     </div>
                     <div class="bg-gradient-to-br from-sky-900/10 to-slate-950 p-5 rounded-2xl border border-sky-500/10 shadow-md">
-                        <span class="text-xs font-semibold tracking-wider text-sky-400 uppercase">Automotive</span>
+                        <span class="text-xs font-semibold tracking-wider text-sky-400 uppercase">Data Collection Opportunities</span>
                         <h3 class="text-3xl font-extrabold text-sky-400 mt-1 font-display">{{ $autoCount }}</h3>
                     </div>
                 </div>
@@ -197,9 +197,9 @@
                     @forelse ($articles as $art)
                         @php
                             $catColor = 'bg-slate-800 text-slate-400';
-                            if ($art->topic_category === 'Tech & Development') $catColor = 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
-                            if ($art->topic_category === 'Corporate Finance & Tax') $catColor = 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
-                            if ($art->topic_category === 'Automotive') $catColor = 'bg-sky-500/10 text-sky-400 border border-sky-500/20';
+                            if ($art->topic_category === 'Egocentric Video Datasets') $catColor = 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+                            if ($art->topic_category === 'Physical AI & Robotics') $catColor = 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
+                            if ($art->topic_category === 'Data Collection Opportunities') $catColor = 'bg-sky-500/10 text-sky-400 border border-sky-500/20';
                         @endphp
                         <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 flex flex-col justify-between shadow-lg hover:border-slate-700 hover:scale-[1.01] transition-all duration-200">
                             <div class="space-y-4">
@@ -222,7 +222,7 @@
 
                             <div class="mt-6 border-t border-slate-800 pt-4">
                                 <a href="{{ $art->url }}" target="_blank" class="w-full text-center block bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition duration-150">
-                                    Baca Selengkapnya
+                                    Buka Sumber / Read More
                                 </a>
                             </div>
                         </div>

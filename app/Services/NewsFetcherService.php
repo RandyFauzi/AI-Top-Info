@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 class NewsFetcherService
 {
     /**
-     * Fetch the latest news articles for configured topics and keywords.
+     * Fetch the latest news articles for configured topics and keywords in English.
      *
      * @return int Number of successfully ingested articles
      */
@@ -23,14 +23,14 @@ class NewsFetcherService
         foreach ($topics as $category => $data) {
             $keywords = $data['keywords'] ?? [];
             foreach ($keywords as $keyword) {
-                // Construct Google News RSS query (hl=id-ID & gl=ID filters results to Indonesian region context)
+                // hl=en-US & gl=US filters results to global English context
                 $query = urlencode($keyword);
-                $url = "https://news.google.com/rss/search?q={$query}&hl=id-ID&gl=ID&ceid=ID:id";
+                $url = "https://news.google.com/rss/search?q={$query}&hl=en-US&gl=US&ceid=US:en";
 
-                Log::info("NewsFetcherService: Fetching RSS for [{$category}] - Keyword: '{$keyword}' URL: {$url}");
+                Log::info("NewsFetcherService: Fetching global RSS for [{$category}] - Keyword: '{$keyword}' URL: {$url}");
 
                 try {
-                    // Disable SSL verification for cURL safety
+                    // Disable SSL verification for cURL safety in local Laragon environments
                     $response = Http::timeout(10)
                         ->withoutVerifying()
                         ->get($url);
@@ -44,17 +44,17 @@ class NewsFetcherService
                                 $pubDate = (string) $item->pubDate;
                                 $descriptionRaw = (string) $item->description;
 
-                                // Clean up the title and extract source name if possible
+                                // Clean up the title and extract source name
                                 // Google News format: "Title of Article - Source Name"
                                 $title = $titleRaw;
-                                $sourceName = 'News Source';
+                                $sourceName = 'Global Source';
                                 if (str_contains($titleRaw, ' - ')) {
                                     $parts = explode(' - ', $titleRaw);
                                     $sourceName = array_pop($parts);
                                     $title = implode(' - ', $parts);
                                 }
 
-                                // Remove HTML tags from Google News description (it contains target tables sometimes)
+                                // Remove HTML tags from Google News description
                                 $summary = trim(strip_tags($descriptionRaw));
 
                                 NewsArticle::updateOrCreate(

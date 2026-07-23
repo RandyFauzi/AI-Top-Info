@@ -35,12 +35,12 @@ class DashboardController extends Controller
         // Calculate KPI counters
         $totalCount = NewsArticle::count();
         $categoriesCount = NewsArticle::distinct('topic_category')->count('topic_category');
-        $techCount = NewsArticle::where('topic_category', 'Tech & Development')->count();
-        $financeCount = NewsArticle::where('topic_category', 'Corporate Finance & Tax')->count();
-        $autoCount = NewsArticle::where('topic_category', 'Automotive')->count();
+        $techCount = NewsArticle::where('topic_category', 'Egocentric Video Datasets')->count();
+        $financeCount = NewsArticle::where('topic_category', 'Physical AI & Robotics')->count();
+        $autoCount = NewsArticle::where('topic_category', 'Data Collection Opportunities')->count();
 
         // Pass categories list for dropdown filter
-        $categories = ['Tech & Development', 'Corporate Finance & Tax', 'Automotive'];
+        $categories = ['Egocentric Video Datasets', 'Physical AI & Robotics', 'Data Collection Opportunities'];
 
         return view('dashboard', compact(
             'articles',
