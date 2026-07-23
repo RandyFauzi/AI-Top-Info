@@ -4,47 +4,39 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use App\Jobs\FetchGlobalNewsJob;
-use App\Models\Company;
-use App\Models\IntelligenceSignal;
+use App\Jobs\RunOpportunityHunterJob;
+use App\Models\Opportunity;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
 Artisan::command('pipeline:test', function () {
-    $this->info('Starting test B2B lead pipeline...');
+    $this->info('Starting Opportunity Hunter pipeline test...');
     
     // Set queue connection to sync dynamically so background jobs run immediately
     config(['queue.default' => 'sync']);
 
     // Clear previous runs
-    $this->info('Clearing old companies, signals, and scores...');
-    Company::query()->delete();
-    IntelligenceSignal::query()->delete();
+    $this->info('Clearing old opportunities...');
+    Opportunity::query()->delete();
 
     // Trigger ingestion job synchronously
-    $this->info('Dispatching FetchGlobalNewsJob...');
-    FetchGlobalNewsJob::dispatchSync();
+    $this->info('Dispatching RunOpportunityHunterJob...');
+    RunOpportunityHunterJob::dispatchSync();
 
     $this->info('Pipeline run completed!');
     $this->info('-------------------------------------');
     
-    $companies = Company::with(['latestLeadScore', 'latestOutreachStrategy'])->get();
-    $this->info("Total Companies Found: " . $companies->count());
+    $opportunities = Opportunity::all();
+    $this->info("Total Opportunities Aggregated: " . $opportunities->count());
     
-    foreach ($companies as $company) {
-        $this->line("Company: " . $company->name);
-        $this->line("Domain: " . $company->domain);
-        if ($company->latestLeadScore) {
-            $this->line("  Score: " . $company->latestLeadScore->score);
-            $this->line("  Category: " . $company->latestLeadScore->intent_category);
-            $this->line("  Reasoning: " . $company->latestLeadScore->reasoning);
-        }
-        if ($company->latestOutreachStrategy) {
-            $this->line("  Outreach Persona: " . $company->latestOutreachStrategy->target_persona);
-            $this->line("  Email Draft Hook: " . substr($company->latestOutreachStrategy->email_draft, 0, 100) . "...");
-        }
+    foreach ($opportunities as $opp) {
+        $this->line("Title: " . $opp->title);
+        $this->line("Platform: " . $opp->source_platform);
+        $this->line("URL: " . $opp->source_url);
+        $this->line("Summary: " . $opp->summary);
+        $this->line("Contacts: " . json_encode($opp->extracted_contacts));
         $this->line("-------------------------------------");
     }
-})->purpose('Run full ingestion and AI scoring pipeline validation');
+})->purpose('Run full crawler and opportunity aggregator pipeline validation');

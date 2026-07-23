@@ -4,62 +4,46 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\Company;
-use App\Models\IntelligenceSignal;
-use App\Models\LeadScore;
-use App\Jobs\FetchGlobalNewsJob;
+use App\Models\Opportunity;
+use App\Jobs\RunOpportunityHunterJob;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // Search & filter parameters
         $search = $request->input('search');
-        $minScore = $request->input('min_score');
-        $source = $request->input('source');
+        $platform = $request->input('platform');
 
-        $query = Company::with(['latestLeadScore', 'latestOutreachStrategy', 'intelligenceSignals']);
+        $query = Opportunity::query();
 
-        // Filter by company name
         if ($search) {
-            $query->where('name', 'like', "%{$search}%");
-        }
-
-        // Filter by score threshold (needs checking the latest score relationship)
-        if ($minScore) {
-            $query->whereHas('latestLeadScore', function ($q) use ($minScore) {
-                $q->where('score', '>=', (int) $minScore);
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('summary', 'like', "%{$search}%");
             });
         }
 
-        // Filter by intelligence source
-        if ($source) {
-            $query->whereHas('intelligenceSignals', function ($q) use ($source) {
-                $q->where('source', $source);
-            });
+        if ($platform) {
+            $query->where('source_platform', $platform);
         }
 
-        // Retrieve and sort by highest score
-        $companies = $query->get()->sortByDesc(function ($company) {
-            return $company->latestLeadScore ? $company->latestLeadScore->score : 0;
-        });
+        $opportunities = $query->orderBy('posted_at', 'desc')->get();
 
-        // Compute general metrics
-        $totalLeads = Company::count();
-        $highValueLeads = Company::whereHas('latestLeadScore', function ($q) {
-            $q->where('score', '>=', 80);
-        })->count();
-        $processedSignals = IntelligenceSignal::count();
+        // Calculate KPI metrics
+        $totalCount = Opportunity::count();
+        $linkedinCount = Opportunity::where('source_platform', 'LinkedIn')->count();
+        $discordCount = Opportunity::where('source_platform', 'Discord')->count();
+        $webCount = Opportunity::where('source_platform', 'Web')->count();
 
-        return view('dashboard', compact('companies', 'totalLeads', 'highValueLeads', 'processedSignals', 'search', 'minScore', 'source'));
+        return view('dashboard', compact('opportunities', 'totalCount', 'linkedinCount', 'discordCount', 'webCount', 'search', 'platform'));
     }
 
     public function triggerIngest()
     {
-        // Run FetchGlobalNewsJob synchronously for instant feedback in UI
-        FetchGlobalNewsJob::dispatchSync();
+        // Run crawler and parser sync for instant dashboard update
+        RunOpportunityHunterJob::dispatchSync();
 
-        return redirect()->route('dashboard')->with('status', 'Pipeline completed! Data successfully ingested and processed through Gemini API.');
+        return redirect()->route('dashboard')->with('status', 'Opportunity Hunter completed! Scraped signals parsed by LangChain and updated successfully.');
     }
 }
