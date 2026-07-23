@@ -130,12 +130,12 @@ def run_local_fallback(content: str) -> dict:
 @app.post("/analyze-opportunity", response_model=OpportunityResponse)
 async def analyze_opportunity(request: OpportunityRequest):
     api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
+    if not api_key or not api_key.startswith("AIzaSy"):
         return run_local_fallback(request.raw_content)
         
     try:
         # Initialize Gemini via LangChain
-        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
+        llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key)
 
         # ----------------------------------------------------
         # AGENT 1: Researcher / Extractor Agent

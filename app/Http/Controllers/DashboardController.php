@@ -46,4 +46,22 @@ class DashboardController extends Controller
 
         return redirect()->route('dashboard')->with('status', 'Opportunity Hunter completed! Scraped signals parsed by LangChain and updated successfully.');
     }
+
+    public function runHunter(Request $request)
+    {
+        try {
+            // Run live ingestion synchronously
+            RunOpportunityHunterJob::dispatchSync();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Berita berhasil diperbarui!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menarik data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

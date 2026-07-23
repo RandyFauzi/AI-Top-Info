@@ -39,7 +39,25 @@
         }
     </script>
 </head>
-<body class="h-full flex flex-col antialiased">
+<body class="h-full flex flex-col antialiased" x-data="{ isLoading: false, currentStep: 0, steps: ['Scanning Reddit API endpoints...', 'Fetching Google News RSS feeds...', 'Validating active target links...', 'Parsing dataset requests with Gemini LLM...'] }">
+
+    <!-- Loading Overlay -->
+    <div x-show="isLoading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md" style="display: none;" x-transition>
+        <div class="relative flex items-center justify-center">
+            <!-- Outer Pulsating Ring -->
+            <div class="absolute h-32 w-32 rounded-full border border-brand-500/30 animate-ping"></div>
+            <!-- Scanning Circular Spinner -->
+            <div class="h-24 w-24 rounded-full border-4 border-slate-800 border-t-brand-500 animate-spin"></div>
+            <!-- Glowing Center Core -->
+            <div class="absolute h-6 w-6 rounded-full bg-brand-500 shadow-lg shadow-brand-500/50 animate-pulse"></div>
+        </div>
+        <div class="mt-8 text-center space-y-2">
+            <h3 class="text-xl font-bold tracking-wide text-white font-display">Ingesting Live Opportunities</h3>
+            <p class="text-sm text-brand-400 font-semibold animate-pulse" x-text="steps[currentStep]"></p>
+            <p class="text-xs text-slate-500">This may take up to 20 seconds. Please do not close this window.</p>
+        </div>
+    </div>
+
     <div class="min-h-full flex">
         <!-- Sidebar -->
         <aside class="hidden md:flex md:w-64 md:flex-col bg-slate-900 border-r border-slate-800">
@@ -68,20 +86,49 @@
                 <div class="flex items-center space-x-4">
                     <h2 class="text-2xl font-bold font-display text-white tracking-wide">Global Opportunity Aggregator</h2>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <form action="{{ route('dashboard.ingest') }}" method="POST">
-                        @csrf
-                        <button type="submit" class="flex items-center space-x-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                            <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" x-show="false" style="display: none;">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/>
-                            </svg>
-                            <span>Run Ingestion Hunter</span>
-                        </button>
-                    </form>
+                <div class="flex items-center space-x-4" x-data="{ isUpdating: false }">
+                    <button 
+                        @click="
+                            isUpdating = true; 
+                            isLoading = true;
+                            let intervalId = setInterval(() => { if (currentStep < 3) currentStep++ }, 4000);
+                            fetch('{{ route('hunter.run') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                clearInterval(intervalId);
+                                if (data.status === 'success') {
+                                    window.location.reload();
+                                } else {
+                                    isUpdating = false;
+                                    isLoading = false;
+                                    alert(data.message);
+                                }
+                            })
+                            .catch(err => {
+                                clearInterval(intervalId);
+                                isUpdating = false;
+                                isLoading = false;
+                                alert('Failed to connect to ingestion server.');
+                            });
+                        "
+                        :disabled="isUpdating"
+                        class="flex items-center space-x-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                    >
+                        <svg x-show="isUpdating" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <svg x-show="!isUpdating" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/>
+                        </svg>
+                        <span x-text="isUpdating ? 'Sedang Menarik Data...' : 'Run Ingestion Hunter'">Run Ingestion Hunter</span>
+                    </button>
                 </div>
             </header>
 
