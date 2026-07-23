@@ -5,7 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "dev-all": "concurrently \"php artisan serve\" \"vite\" \"engine/venv/Scripts/python engine/main.py\""
+        "dev-all": "concurrently \"php artisan serve\" \"vite\""
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

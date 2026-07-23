@@ -7,21 +7,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Opportunity extends Model
+class NewsArticle extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'topic_category',
         'title',
-        'source_platform',
-        'source_url',
         'summary',
-        'extracted_contacts',
-        'posted_at',
+        'source_name',
+        'url',
+        'published_at',
     ];
 
     protected $casts = [
-        'extracted_contacts' => 'array',
-        'posted_at' => 'datetime',
+        'published_at' => 'datetime',
     ];
 }

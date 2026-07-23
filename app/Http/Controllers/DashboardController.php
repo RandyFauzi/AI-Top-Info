@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\Opportunity;
-use App\Services\Ingestion\AggregatorManager;
-use App\Services\AIReasoning\GeminiAnalysisService;
+use App\Models\NewsArticle;
+use App\Services\NewsFetcherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -15,9 +14,9 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-        $platform = $request->input('platform');
+        $category = $request->input('category');
 
-        $query = Opportunity::query();
+        $query = NewsArticle::query();
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -26,80 +25,53 @@ class DashboardController extends Controller
             });
         }
 
-        if ($platform) {
-            $query->where('source_platform', $platform);
+        if ($category) {
+            $query->where('topic_category', $category);
         }
 
-        $opportunities = $query->orderBy('posted_at', 'desc')->get();
+        // Fetch articles sorted by newest publish date
+        $articles = $query->orderBy('published_at', 'desc')->get();
 
-        // Calculate KPI metrics
-        $totalCount = Opportunity::count();
-        $linkedinCount = Opportunity::where('source_platform', 'LinkedIn')->count();
-        $discordCount = Opportunity::where('source_platform', 'Discord')->count();
-        $webCount = Opportunity::where('source_platform', 'Web')->count();
+        // Calculate KPI counters
+        $totalCount = NewsArticle::count();
+        $categoriesCount = NewsArticle::distinct('topic_category')->count('topic_category');
+        $techCount = NewsArticle::where('topic_category', 'Tech & Development')->count();
+        $financeCount = NewsArticle::where('topic_category', 'Corporate Finance & Tax')->count();
+        $autoCount = NewsArticle::where('topic_category', 'Automotive')->count();
 
-        return view('dashboard', compact('opportunities', 'totalCount', 'linkedinCount', 'discordCount', 'webCount', 'search', 'platform'));
+        // Pass categories list for dropdown filter
+        $categories = ['Tech & Development', 'Corporate Finance & Tax', 'Automotive'];
+
+        return view('dashboard', compact(
+            'articles',
+            'totalCount',
+            'categoriesCount',
+            'techCount',
+            'financeCount',
+            'autoCount',
+            'search',
+            'category',
+            'categories'
+        ));
     }
 
-    public function triggerIngest()
+    public function runHunter(Request $request, NewsFetcherService $fetcher)
     {
-        // Fallback sync trigger using obsolete job
-        \App\Jobs\RunOpportunityHunterJob::dispatchSync();
-
-        return redirect()->route('dashboard')->with('status', 'Opportunity Hunter completed!');
-    }
-
-    public function runHunter(
-        Request $request,
-        AggregatorManager $aggregator,
-        GeminiAnalysisService $analysisService
-    ) {
-        Log::info('DashboardController: Starting synchronous debug ingestion...');
+        Log::info('DashboardController: Starting synchronous news fetching...');
 
         try {
-            // Retrieve raw posts directly, bypassing background job queues
-            $rawPosts = $aggregator->runHunt();
-            Log::info('DashboardController: Aggregated raw postings: ' . count($rawPosts));
-
-            $savedCount = 0;
-
-            foreach ($rawPosts as $post) {
-                $content = $post['content'] ?? '';
-                
-                Log::info("DashboardController: Sending raw content to Gemini analysis:\n" . $content);
-
-                // Run analysis sequentially
-                $result = $analysisService->analyzeOpportunity($content);
-
-                Log::info("DashboardController: Gemini Response Payload: " . json_encode($result));
-
-                if (isset($result['is_relevant_opportunity']) && $result['is_relevant_opportunity'] === true) {
-                    Opportunity::updateOrCreate(
-                        ['source_url' => $post['source_url']],
-                        [
-                            'title' => $result['title'] ?? 'Lead Opportunity',
-                            'source_platform' => $result['source_platform'] ?? $post['source_platform'],
-                            'summary' => $result['summary'] ?? '',
-                            'extracted_contacts' => $result['contacts'] ?? null,
-                            'posted_at' => $post['posted_at'] ?? now(),
-                        ]
-                    );
-                    $savedCount++;
-                } else {
-                    Log::warning("DashboardController: Opportunity filtered out by Gemini. Content rejected:\n" . $content);
-                }
-            }
+            $ingestedCount = $fetcher->fetchLatestNews();
 
             return response()->json([
                 'status' => 'success',
-                'message' => "Berita berhasil diperbarui! Saved {$savedCount} new opportunities."
+                'message' => "Berita berhasil diperbarui! Berhasil menarik {$ingestedCount} artikel terbaru."
             ]);
         } catch (\Exception $e) {
-            Log::error('DashboardController: Synchronous ingestion failed. Error: ' . $e->getMessage() . "\nTrace:\n" . $e->getTraceAsString());
+            Log::error('DashboardController: News ingestion failed. Error: ' . $e->getMessage());
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal menarik data: ' . $e->getMessage()
+                'message' => 'Gagal menarik data berita: ' . $e->getMessage()
             ], 500);
         }
     }

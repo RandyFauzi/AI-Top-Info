@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Top Info - Web Scraper Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js untuk interaktivitas UI yang mulus -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 font-sans min-h-screen p-6 md:p-12">
+
+    <div class="max-w-4xl mx-auto" x-data="scraperAgent()">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+                <span class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-sm">AT</span> 
+                AI Top Info - Web Scraper Agent
+            </h1>
+            <p class="text-slate-400 mt-2">Sedot teks dari halaman web apa pun dan biarkan AI mengekstrak peluang & kontak (Email/WA).</p>
+        </div>
+
+        <!-- Panel Kontrol -->
+        <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 mb-8">
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Gemini API Key (Gratis/1.5 Flash)</label>
+                    <input type="password" x-model="apiKey" placeholder="Masukkan AI_API_KEY Anda di sini..." 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">URL Target (Contoh: Link Postingan Reddit / Halaman Karir)</label>
+                    <input type="url" x-model="targetUrl" placeholder="https://www.reddit.com/r/datasets/..." 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="mt-2">
+                    <button @click="runScraper()" :disabled="isLoading"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 flex justify-center items-center gap-2">
+                        <span x-show="!isLoading">🚀 Ekstrak Informasi Sekarang</span>
+                        <span x-show="isLoading" class="animate-pulse">🔄 Menyedot Data & Menganalisis...</span>
+                    </button>
+                </div>
+                <!-- Pesan Error -->
+                <div x-show="errorMessage" class="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mt-2 text-sm" x-text="errorMessage"></div>
+            </div>
+        </div>
+
+        <!-- Hasil Analisis -->
+        <div x-show="result" class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 transition-all">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="text-xl font-bold text-white" x-text="result?.title || 'Hasil Ekstraksi'"></h2>
+                <span class="px-3 py-1 bg-green-900/50 text-green-400 border border-green-700 rounded-full text-xs font-bold" 
+                      x-show="result?.is_relevant_opportunity">PELUANG VALID</span>
+            </div>
+            
+            <p class="text-slate-300 text-sm mb-6 leading-relaxed" x-text="result?.summary"></p>
+
+            <div class="border-t border-slate-700 pt-4">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Kontak Ditemukan:</h3>
+                <div class="flex flex-wrap gap-3">
+                    <!-- Tombol Email -->
+                    <template x-if="result?.contacts?.email">
+                        <a :href="'mailto:' + result.contacts.email" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm text-white transition">
+                            ✉️ <span x-text="result.contacts.email"></span>
+                        </a>
+                    </template>
+                    <!-- Tombol WA -->
+                    <template x-if="result?.contacts?.phone_wa">
+                        <a :href="'https://wa.me/' + result.contacts.phone_wa" target="_blank" class="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-lg text-sm text-white transition">
+                            💬 Chat WA
+                        </a>
+                    </template>
+                    <!-- Jika Kosong -->
+                    <template x-if="!result?.contacts?.email && !result?.contacts?.phone_wa">
+                        <span class="text-slate-500 text-sm italic">Tidak ada kontak langsung yang ditemukan di teks ini.</span>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('scraperAgent', () => ({
+                apiKey: '',
+                targetUrl: '',
+                isLoading: false,
+                errorMessage: '',
+                result: null,
+
+                async runScraper() {
+                    this.errorMessage = '';
+                    this.result = null;
+
+                    if (!this.apiKey || !this.targetUrl) {
+                        this.errorMessage = "Harap masukkan API Key dan URL Target.";
+                        return;
+                    }
+
+                    this.isLoading = true;
+
+                    try {
+                        // 1. Scraping HTML via Proxy (Mengatasi pemblokiran CORS)
+                        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(this.targetUrl)}`;
+                        const scrapeResponse = await fetch(proxyUrl);
+                        const scrapeData = await scrapeResponse.json();
+                        
+                        if (!scrapeData.contents) throw new Error("Gagal menyedot halaman web.");
+
+                        // 2. Bersihkan HTML menjadi teks murni
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(scrapeData.contents, 'text/html');
+                        // Ambil isi teks saja dan potong jika terlalu panjang agar tidak memakan token berlebih
+                        const rawText = doc.body.innerText.replace(/\s+/g, ' ').substring(0, 15000); 
+
+                        // 3. Panggil Gemini API
+                        await this.analyzeWithGemini(rawText);
+
+                    } catch (error) {
+                        this.errorMessage = error.message || "Terjadi kesalahan saat mengekstrak data.";
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                async analyzeWithGemini(textData) {
+                    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`;
+                    
+                    const promptText = `
+                        Anda adalah analis intelijen B2B. Baca teks mentah dari halaman web ini dan tentukan apakah teks tersebut mengandung informasi lowongan, permintaan proyek, atau pencarian layanan (terutama terkait Dataset Video/AI).
+                        
+                        Teks Web:
+                        "${textData}"
+                        
+                        Ekstrak informasi tersebut dan balas HANYA dengan JSON valid format berikut tanpa markdown tambahan:
+                        {
+                            "is_relevant_opportunity": true/false,
+                            "title": "Topik Utama / Posisi yang Dicari",
+                            "summary": "Ringkasan 2 kalimat tentang apa yang mereka butuhkan",
+                            "contacts": {
+                                "email": "ekstrak_email_jika_ada atau null",
+                                "phone_wa": "ekstrak_nomor_telepon_jika_ada_dalam_format_internasional (contoh: 62812xxx) atau null"
+                            }
+                        }
+                    `;
+
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: promptText }] }]
+                        })
+                    });
+
+                    if (!response.ok) throw new Error("Gemini API menolak permintaan. Periksa API Key Anda.");
+
+                    const aiData = await response.json();
+                    let aiResponseText = aiData.candidates[0].content.parts[0].text;
+                    
+                    // Bersihkan tag markdown JSON jika Gemini memberikannya
+                    aiResponseText = aiResponseText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                    this.result = JSON.parse(aiResponseText);
+                }
+            }))
+        })
+    </script>
+</body>
+</html>
