@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "dev-all": "concurrently \"php artisan serve\" \"vite\" \"engine/venv/Scripts/python engine/main.py\""
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
